@@ -1,4 +1,4 @@
-from TikTokDataLoader import TikTokDataLoader
+from utils.TikTokDataLoader import TikTokDataLoader
 import os
 import pandas as pd
 
