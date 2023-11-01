@@ -60,7 +60,13 @@ class TikTokGraphBuilder:
 
     def build_graph(self, main_account_dict=None, following_dfs_dict=None):
         if self.dataloader and not (main_account_dict and following_dfs_dict):
-            main_account_dict, following_dfs_dict = self.dataloader.load_data()
+            # try to load data from dataloader first
+            main_account_dict = getattr(self.dataloader, "main_account_dict", None)
+            following_dfs_dict = getattr(self.dataloader, "following_dfs_dict", None)
+            
+            if not (main_account_dict and following_dfs_dict):
+                main_account_dict, following_dfs_dict = self.dataloader.load_data()
+                
         elif not (main_account_dict and following_dfs_dict):
             raise ValueError("Please provide either dataloader or main_account_dict and following_dfs_dict.")
         self.add_main_account(main_account_dict)

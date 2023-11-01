@@ -13,6 +13,7 @@ class TikTokDataLoader:
         self.following_list = []
         self.df_main = pd.DataFrame()
         self.following_dfs_dict = []
+        self.main_account_dict = {}
             # [{'nodeName': 'account1', 'following_df': df1}
             # ,..., {'nodeName': 'accountN', 'following_df': dfN}
             # ]
@@ -65,11 +66,12 @@ class TikTokDataLoader:
     def load_data(self) -> (pd.DataFrame, list):
         self._get_files()
         self.df_main = self._read_csv(self.main_account[0])
+        self.main_account_dict = {'nodeName':self.main_account[0][:-13], 'df': self.df_main}
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             self.following_dfs_dict = list(tqdm(executor.map(self._read_following_list_csv, self.following_list), total=len(self.following_list), desc="Reading Following CSVs"))
         return (
-                {'nodeName':self.main_account[0][:-13], 'df': self.df_main},
+                self.main_account_dict,
                 self.following_dfs_dict
         )
     
