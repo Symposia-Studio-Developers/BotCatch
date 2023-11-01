@@ -2,7 +2,8 @@ import pandas as pd
 import os
 import concurrent.futures
 from tqdm import tqdm
-
+from .constants import ATTRIBUTE_TYPES
+import warnings
 
 class TikTokDataLoader:
     def __init__(self, dir_path, on_bad_lines="skip"):
@@ -16,8 +17,38 @@ class TikTokDataLoader:
             # ,..., {'nodeName': 'accountN', 'following_df': dfN}
             # ]
 
+
+    def _enforce_df_col_types(self, df):
+
+        _bool_map = {
+                    "True": True,
+                    "False": False,
+                    "0": False,
+                    "1": True
+        }
+
+        for col in df.columns:
+            if col not in ATTRIBUTE_TYPES:
+                warnings.warn(f"Column {col} not in ATTRIBUTE_TYPES, skipping")
+                continue
+            if ATTRIBUTE_TYPES[col] == bool:
+                df[col] = df[col].apply(lambda x: _bool_map[x] if x in _bool_map else bool(x))
+
+            elif col == "stitchSetting": # stitchSetting fixes: mixed bool and int type
+                # str -> bool
+                # bool -> int
+                # int -> int
+                ad_hoc_fix = lambda x: _bool_map[x] if x in _bool_map else int(x) if type(x) == bool else int(x)
+                df[col] = df[col].apply(ad_hoc_fix)
+            else:
+                df[col] = df[col].astype(ATTRIBUTE_TYPES[col])
+        return df
+    
     def _read_csv(self, csv_name):
-        return pd.read_csv(os.path.join(self.dir_path, csv_name), on_bad_lines=self.on_bad_lines)
+        return pd.read_csv(
+            os.path.join(self.dir_path, csv_name),
+            on_bad_lines=self.on_bad_lines
+        ).pipe(self._enforce_df_col_types)
     
     def _read_following_list_csv(self, csv_name):
         df = self._read_csv(csv_name)    
