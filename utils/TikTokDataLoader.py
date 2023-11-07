@@ -2,7 +2,8 @@ import pandas as pd
 import os
 import concurrent.futures
 from tqdm import tqdm
-from .constants import ATTRIBUTE_TYPES
+from .constants import ATTRIBUTE_TYPES, DROPS_COLS
+from collections import defaultdict
 import warnings
 
 class TikTokDataLoader:
@@ -17,6 +18,9 @@ class TikTokDataLoader:
             # [{'nodeName': 'account1', 'following_df': df1}
             # ,..., {'nodeName': 'accountN', 'following_df': dfN}
             # ]
+        
+        # DEBUG
+        self.cols_all_occurences = {}
 
 
     def _enforce_df_col_types(self, df):
@@ -28,13 +32,26 @@ class TikTokDataLoader:
                     "1": True
         }
 
-        for col in df.columns:
+        for col in list(set(df.columns) - set(DROPS_COLS)):
             if col not in ATTRIBUTE_TYPES:
                 warnings.warn(f"Column {col} not in ATTRIBUTE_TYPES, skipping")
                 continue
             if ATTRIBUTE_TYPES[col] == bool:
-                df[col] = df[col].apply(lambda x: _bool_map[x] if x in _bool_map else bool(x))
-
+                if col not in self.cols_all_occurences:
+                    self.cols_all_occurences[col] = {}
+                def _warn_and_cast_to_bool(x):
+                    if type(x) != bool:
+                        warnings.warn(f"Column {col} is bool but has value {x} of type {type(x)}, casting to bool: {bool(x)}")
+                        self.cols_all_occurences[col][x] = self.cols_all_occurences[col].get(x, 0) + 1
+                    return bool(x)
+                df[col] = df[col].apply(lambda x: _bool_map[x] if x in _bool_map else _warn_and_cast_to_bool(x))
+            elif col == "secret": # mixed int and str type
+                df[col] = df[col].apply(
+                    lambda x: _bool_map[x] if x in _bool_map else int(x) if type(x) == str else 
+                    x if type(x) == bool 
+                    else warnings.warn(f"Column {col} is int but has value {x} of type {type(x)}, casting to int: {int(x)}") or int(x)
+                )
+                df[col] = df[col].astype(int)
             elif col == "stitchSetting": # stitchSetting fixes: mixed bool and int type
                 # str -> bool
                 # bool -> int

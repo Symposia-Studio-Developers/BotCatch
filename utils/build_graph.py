@@ -14,9 +14,13 @@ class TikTokGraphBuilder:
     def __init__(self, in_memory=False, dataloader: TikTokDataLoader = None):
         self.G = nx.DiGraph()
         self.in_memory = in_memory
-        self.dataloader = dataloader
+        self._dataloader = dataloader
         self.main_account_id = None
 
+    @property
+    def dataloader(self):
+        return self._dataloader
+    
     def _remove_noinfo_features(self, df):
         if not any([c in df.columns for c in self.DROPS_COLS]):
             return df
@@ -60,6 +64,11 @@ class TikTokGraphBuilder:
 
     def build_graph(self, main_account_dict=None, following_dfs_dict=None):
         if self.dataloader and not (main_account_dict and following_dfs_dict):
+
+            # try to load from in-memory graph if exists
+            if self.in_memory and getattr(self, 'graph', None):
+                return self.graph
+
             # try to load data from dataloader first
             main_account_dict = getattr(self.dataloader, "main_account_dict", None)
             following_dfs_dict = getattr(self.dataloader, "following_dfs_dict", None)
@@ -69,11 +78,16 @@ class TikTokGraphBuilder:
                 
         elif not (main_account_dict and following_dfs_dict):
             raise ValueError("Please provide either dataloader or main_account_dict and following_dfs_dict.")
+        
+        # initialize graph
+        self.G = nx.DiGraph()
+        
         self.add_main_account(main_account_dict)
         self.add_secondary_followings(following_dfs_dict)
         
         if self.in_memory:
             self.graph = self.G
+            return self.graph
         else:
             graph_to_return = self.G
             self.G = None  # clear the reference
