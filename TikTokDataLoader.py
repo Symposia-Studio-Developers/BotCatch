@@ -3,7 +3,6 @@ import os
 import concurrent.futures
 from tqdm import tqdm
 
-
 class TikTokDataLoader:
     def __init__(self, dir_path, on_bad_lines="skip"):
         self.dir_path = dir_path
@@ -34,12 +33,28 @@ class TikTokDataLoader:
     def load_data(self) -> (pd.DataFrame, list):
         self._get_files()
         self.df_main = self._read_csv(self.main_account[0])
-
         with concurrent.futures.ThreadPoolExecutor() as executor:
             self.following_dfs_dict = list(tqdm(executor.map(self._read_following_list_csv, self.following_list), total=len(self.following_list), desc="Reading Following CSVs"))
         return self.df_main, self.following_dfs_dict
-    
-
+    def read_full_data(datasize):
+        # Read the full dataset and labels from data folder as the training set
+        account_list = []
+        for i in range(datasize):
+            # Add bot
+            test_dir = [d for d in os.listdir("data") if d.startswith("(Bot)")][i]
+            test_dir = os.path.join("data", test_dir)
+            tiktok_data_loader = TikTokDataLoader(dir_path=test_dir)
+            df_main, following_dfs_dict = tiktok_data_loader.load_data()
+            df_main['is_bot'] = 1
+            account_list.append(df_main)
+            # Add human
+            test_dir = [d for d in os.listdir("data") if d.startswith("(Human)")][i]
+            test_dir = os.path.join("data", test_dir)
+            tiktok_data_loader = TikTokDataLoader(dir_path=test_dir)
+            df_main, following_dfs_dict = tiktok_data_loader.load_data()
+            df_main['is_bot'] = 0
+            account_list.append(df_main)
+        return pd.concat(account_list)
 if __name__ == "__main__":
     
     test_dir = [d for d in os.listdir("data") if d.startswith("(Bot)")][0]
