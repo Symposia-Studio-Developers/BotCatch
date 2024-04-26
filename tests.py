@@ -12,3 +12,4 @@ if __name__ == "__main__":
     print(df_main.head())
     print(f"There are {len(following_dfs_dict)} following dataframes")
     print(following_dfs_dict[1])
+    print(following_dfs_dict[2])
